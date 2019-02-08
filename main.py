@@ -77,8 +77,8 @@ def fit_linear(filename):
         sigma_err = 0
         #divisor = 0
         while m < len(element):
-            err_fix = 1/float(err[m])
-            current_element = float(element[m])
+            err_fix = 1/(err[m])
+            current_element = element[m]
             sigma_element +=  (current_element * err_fix)
             sigma_err += err_fix
             m += 1
@@ -120,7 +120,7 @@ def fit_linear(filename):
         for e in data[0::location]:
         
         # each element has to contain same number of argumnents 
-        # if the space between each title is not identical 
+        # if the space between each title is not the same
         # there is an length error
             try:
                 float(e)
@@ -151,58 +151,78 @@ def fit_linear(filename):
             p = p +1 
         return xy
     
+    # sigma1 = weight(x^2) - weight(x)^2
     def numerator(x_squared,x,dy_squared):
-        numerator =  weighted_mean(x_squared,dy_squared) - (weighted_mean(x,dy_squared)**2)
+        var_1 = weighted_mean(x_squared,dy_squared)
+        var_2 = weighted_mean(x,dy_squared)
+        numerator =   var_1 - (var_2**2)
         return numerator
     
-    def a (yx,y,dy_squared,NN):
-        a_iter =(weighted_mean(yx,dy_squared) - (weighted_mean(x,dy_squared)*weighted_mean(y,dy_squared)))
-        a = a_iter/NN
+    # a = sigma2 = (weight(xy) - (weight(x)*weight(y))) / sigma1
+    def a (yx,x,y,dy_squared,sigma1):
+        var_3 = weighted_mean(yx,dy_squared)
+        var_4 = weighted_mean(x,dy_squared)
+        var_5 = weighted_mean(y,dy_squared)
+        a_iter =( var_3 - (var_4*var_5))
+        a = a_iter/sigma1
         return a
     
+    # b = sigma3 = weight(y) - (a *weight(x)))
     def b (y,dy_squared,x,A):
-        b = (weighted_mean(y,dy_squared) - (a* weighted_mean(x,dy_squared)))
+        var_6 = weighted_mean(y,dy_squared)
+        var_7 = weighted_mean(x,dy_squared)
+        b =  var_6- (A*var_7)
         return b
     
-    def da (dy_squared,N):
+    # da^2 = sigma4 = weight(dy^2) / sigma1* N
+    def da (dy_squared,sigma1):
         da_iter = weighted_mean(dy_squared,dy_squared)
-        da = da_iter/N * (len(dy_squared))
+        da = da_iter/sigma1 * (len(dy_squared))
         return da**(1/2)
     
-    def db(dy_squared,x_squared,N):
-        db_iter = (weighted_mean(dy_squared,dy_squared) * weighted_mean(x_squared,dy_squared))
-        db = db_iter/N * (len(dy_squared))
+    # db^2 = sigma5 = weight(dy^2)* weight(x^2) / sigma1* N
+    def db(dy_squared,x_squared,sigma1):
+        var_9 = weighted_mean(dy_squared,dy_squared)
+        var_10 = weighted_mean(x_squared,dy_squared)
+        db_iter = (var_9*var_10)
+        db = db_iter/sigma1 * (len(dy_squared))
         return db **(1/2)
     
-    def chi2 (y,x,a,b,dy):
-        chi2 = 0 
+    # f(x) = (a*x[i]+b))
+    # sigma(i) ( ((y[i] - f(x[i])) / dy[i])^2 )
+    def chi2 (y,x,a_,b,dy):
+        Chi2_ = 0 
         j = 0
         while j < len(x):
-            line = (a*x[j]+b)
-            chi2  = chi2 + ((y[j]-line)/(dy[j]))**2
+            a_func = a_
+            f = (a_func*x[j]+b)
+            Chi2_  = Chi2_ + ((y[j]-f)/(dy[j]))**2
             j += 1
-        return chi2
+        return Chi2_
     
-    def reduced_chi(chi2, x):
-        reduced = len(x)- 2
-        
-        return chi2/ reduced
+    # x^2 / N - 2
+    def reduced_chi(CHI2, x):
+        N = len(x)
+        reduced = N - 2
+        reducedChi = CHI2/ reduced
+        return reducedChi
     
     
     xy = XY (x, y)
     numerator = numerator(x_squared,x,dy)
-    a = a (xy, y, dy_squared,numerator)
-    b = b (y, dy_squared, x ,a)
+    
+    A = a (xy, x, y, dy_squared,numerator)
+    B = b (y, dy_squared, x ,A)
     da= da (dy_squared ,numerator)
     db= db(dy_squared, x_squared, numerator)
-    chi2 = chi2 (y,x,a,b,dy)
-    chi2_reduced = reduced_chi(chi2, x)
+    Chi2 = chi2 (y,x,A,B,dy)
+    chi2_reduced = reduced_chi(Chi2, x)
     
     #outputs 
     
     X = np.array(x)
     Y = np.array(y)
-    linear = a * X + b
+    linear = A * X + B
     x_err = np.array(dx)
     y_err = np.array(dy)
     
@@ -212,4 +232,4 @@ def fit_linear(filename):
     plt.ylabel(y_label)
     plt.show()
     plt.savefig("fit_linear.svg")
-    print ( 'a =',a, '+-', da, "\n", 'b =', b, '+-' , db , "\n", 'chi2 =', chi2, "\n",'chi2_reduced =', chi2_reduced)
+    print ('','a =',A, '+-', da, "\n", 'b =', B, '+-' , db , "\n", 'chi2 =', Chi2, "\n",'chi2_reduced =', chi2_reduced)
